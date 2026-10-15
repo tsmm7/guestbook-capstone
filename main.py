@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from config import settings
 
+VERSION = "1.1.0"
+
 
 def connect():
     return psycopg.connect(settings.database_url)
@@ -17,6 +19,11 @@ async def lifespan(app: FastAPI):
         conn.execute(
             "CREATE TABLE IF NOT EXISTS messages ("
             "id SERIAL PRIMARY KEY, author TEXT, text TEXT)"
+        )
+        # обратно совместимо: nullable + DEFAULT, старая версия колонку не видит
+        conn.execute(
+            "ALTER TABLE messages "
+            "ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now()"
         )
     yield
 
@@ -37,6 +44,11 @@ def index():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/version")
+def version():
+    return {"version": VERSION}
 
 
 @app.get("/messages")
